@@ -1,0 +1,11 @@
+[package]
+name = "chaos-framework"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gl = "0.14.0"
+glam = "0.28.0"
+glfw = "0.57.0"
+once_cell = "1.19.0"
+rand = "0.8.5"

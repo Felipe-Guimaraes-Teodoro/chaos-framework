@@ -1,4 +1,4 @@
-use crate::{bind_buffer, cstr, gen_attrib_pointers, Renderer, Shader, Vertex, DEFAULT_SHADER};
+use crate::{bind_buffer, cstr, gen_attrib_pointers, Renderer, Shader, TextureHandle, Vertex, DEFAULT_SHADER};
 
 use std::ops::{Index, IndexMut};
 use std::{collections::HashMap, ptr};
@@ -6,7 +6,7 @@ use std::{collections::HashMap, ptr};
 use std::ffi::CString;
 
 use gl::{*, types::GLsizei};
-use glam::{Mat4, Quat, Vec3, Vec4};
+use glam::{vec3, Mat4, Quat, Vec3, Vec4};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Mesh {
@@ -14,6 +14,7 @@ pub struct Mesh {
     pub indices: Vec<u32>,
 
     pub vao: u32,
+    pub texture: u32,
     ebo: u32,
     vbo: u32,
 
@@ -22,7 +23,6 @@ pub struct Mesh {
     pub scale: Vec3,
     pub color: Vec3,
 
-    pub texture: u32,
     pub shader: Shader,
     pub parent: Option<Box<Mesh>>,
     pub children: Vec<Box<Mesh>>,
@@ -53,13 +53,10 @@ impl Mesh {
 
         mesh
     }
-    /* 
-    pub fn set_texture(&mut self, texture_name: &str, renderer: &Renderer) {
-        self.texture = renderer.get_texture(texture_name.to_owned());
-        unsafe {
-            self.shader.uniform_1i(cstr!("has_texture"), 1);
-        }
+    pub fn set_texture(&mut self, texture_handle: TextureHandle, renderer: &Renderer) {
+        self.texture = renderer.textures[&texture_handle];
     }
+    /* 
 
     pub fn to_instance(&mut self, data: Vec<InstanceData>, n: usize) -> InstanceMesh {
         let mut new_mesh = InstanceMesh::new(&self.vertices, &self.indices, n);
@@ -83,10 +80,8 @@ impl Mesh {
     }
     */
 
-    pub fn set_color(&mut self, color: Vec4){
-        for vert in self.vertices.iter_mut(){
-            vert.color = color;
-        }
+    pub fn set_color(&mut self, color: Vec3){
+        self.color = color;
     }
 
     pub fn set_position(&mut self, position: Vec3){
@@ -157,7 +152,17 @@ impl Mesh {
 
         BindVertexArray(self.vao);
         self.shader.use_shader();
-
+        
+        if self.texture != 0 {
+            unsafe {
+                self.shader.uniform_1i(cstr!("has_texture"), 1);
+            }
+        } else {
+            unsafe {
+                self.shader.uniform_1i(cstr!("has_texture"), 0);
+            }
+        }
+        
 
         // Set uniforms and draw
         self.shader.uniform_mat4fv(cstr!("model"), &model_matrix.to_cols_array());
@@ -209,11 +214,11 @@ impl Renderer {
         self.meshes.get(&handle)
     }
 
-    pub fn destroy_mesh(&mut self, handle: MeshHandle) -> Result<(), String> {
+    pub fn destroy_mesh(&mut self, handle: MeshHandle) {
         if self.meshes.remove(&handle).is_some() {
-            Ok(())
+
         } else {
-            Err(format!("No mesh found with name '{:?}'", handle))
+            println!("Failed to remove mesh, or there was no mesh to remove");
         }
     }
 }

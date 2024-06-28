@@ -34,8 +34,8 @@ in vec2 TexCoord;
 in vec3 Normal;
 in vec3 FragPos;  
 
-uniform vec3 lightColor[5];
-uniform vec3 lightPos[5];
+uniform vec3 lightColor[256];
+uniform vec3 lightPos[256];
 uniform vec3 viewPos;
 
 uniform int has_texture;
@@ -48,8 +48,8 @@ void main()
     vec4 texColor = fColor;
 
     if (has_texture == 1) {
-        texColor = texture(texture1, TexCoord) * fColor;
-    } 
+       texColor = texture(texture1, TexCoord) * fColor;
+    }
 
     vec3 ambientStrength = vec3(0.1); 
     vec3 specularStrength = vec3(0.5);
@@ -58,18 +58,25 @@ void main()
 
     for (int i = 0; i < num_lights; ++i) {
         vec3 lightDir = normalize(lightPos[i] - FragPos); 
-        vec3 norm = normalize(Normal);
+        float distance = length(lightPos[i] - FragPos);
 
+        float constant_attenuation = 1.0;
+        float linear_attenuation = 0.045;
+        float quadratic_attenuation = 0.016;
+
+        float attenuation = 1.0 / (constant_attenuation + linear_attenuation * distance + quadratic_attenuation * distance * distance);
+
+        vec3 norm = normalize(Normal);
         float diff = max(dot(norm, lightDir), 0.0);
-        vec3 diffuse = diff * lightColor[i];
+        vec3 diffuse = diff * lightColor[i] * attenuation;
 
         vec3 viewDir = normalize(viewPos - FragPos);
         vec3 reflectDir = reflect(-lightDir, norm); 
 
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-        vec3 specular = specularStrength * spec * lightColor[i];
+        vec3 specular = specularStrength * spec * lightColor[i] * attenuation;
 
-        result += (ambientStrength + diffuse + specular) * texColor.rgb;
+        result += ((ambientStrength / num_lights) + diffuse + specular) * texColor.rgb;
     }
 
     FragColor = vec4(result, texColor.a);

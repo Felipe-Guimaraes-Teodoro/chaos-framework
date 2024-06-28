@@ -48,7 +48,7 @@ impl Renderer {
         let handle = LightHandle {id: self.lights.len()};
 
         if self.lights.contains_key(&handle) {
-            println!("Mesh with handle {:?} already exists", handle);
+            println!("Light with handle {:?} already exists", handle);
             return None;
         }
 
@@ -56,11 +56,11 @@ impl Renderer {
         Some(handle)
     }
 
-    pub fn destroy_light(&mut self, handle: LightHandle) -> Result<(), String> {
+    pub fn destroy_light(&mut self, handle: LightHandle) {
         if self.lights.remove(&handle).is_some() {
-            Ok(())
+
         } else {
-            Err(format!("No mesh found with name '{:?}'", handle))
+            println!("Failed to remove light");
         }
     }
 }

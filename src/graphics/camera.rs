@@ -1,6 +1,6 @@
 use glam::{vec3, Mat4, Vec2, Vec3};
 use glfw::{self, Action, Key};
-use crate::{cstr, graphics::shader::Shader};
+use crate::{cstr, graphics::shader::Shader, EventLoop};
 use std::ffi::CString;
 
 const UP: Vec3 = Vec3::Y;
@@ -89,7 +89,7 @@ impl Camera {
 
     pub fn input(
         &mut self,
-        window: &glfw::Window, 
+        el: &EventLoop, 
         glfw: &glfw::Glfw,
     ) {
         let mut speed = self.speed;
@@ -97,34 +97,34 @@ impl Camera {
         self.dt = curr_frame - self.last_frame;
         self.last_frame = curr_frame;
 
-        if window.get_key(Key::LeftShift) == Action::Press {
+        if el.is_key_down(Key::LeftShift) {
             speed *= 20.0;
         }
         
-        if window.get_key(Key::RightShift) == Action::Press {
+        if el.is_key_down(Key::RightShift) {
             speed *= 20.0;
         }
 
-        if window.get_key(Key::W) == Action::Press {
+        if el.is_key_down(Key::W) {
             self.pos += speed * self.dt * self.front; 
         }
-        if window.get_key(Key::S) == Action::Press {
+        if el.is_key_down(Key::S) {
             self.pos -= speed * self.dt * self.front; 
         }
-        if window.get_key(Key::Space) == Action::Press {
+        if el.is_key_down(Key::Space) {
             self.pos += speed * self.dt * self.up;
         }
-        if window.get_key(Key::LeftControl) == Action::Press {
+        if el.is_key_down(Key::LeftControl) {
             self.pos -= speed * self.dt * self.up;
         }
-        if window.get_key(Key::A) == Action::Press {
+        if el.is_key_down(Key::A) {
             self.pos -= speed * self.dt * self.front.cross(self.up).normalize(); 
         }
-        if window.get_key(Key::D) == Action::Press {
+        if el.is_key_down(Key::D) {
             self.pos += speed * self.dt * self.front.cross(self.up).normalize(); 
         }
 
-        let (w, h) = window.get_framebuffer_size();
+        let (w, h) = el.window.get_framebuffer_size();
         self.proj = Mat4::perspective_rh_gl(70.0f32.to_radians(), w as f32 / h as f32, 0.0001, 1000.0);
     }
 

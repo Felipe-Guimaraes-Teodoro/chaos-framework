@@ -27,6 +27,11 @@ impl EventLoop {
         let mut glfw = glfw::init(fail_on_errors!()).unwrap();
         
         glfw.window_hint(glfw::WindowHint::TransparentFramebuffer(true));
+        glfw.window_hint(glfw::WindowHint::Decorated(true));
+        glfw.window_hint(glfw::WindowHint::DoubleBuffer(true));
+        glfw.window_hint(glfw::WindowHint::ContextVersionMajor(3));
+        glfw.window_hint(glfw::WindowHint::ContextVersionMinor(3));
+        // glfw.window_hint(glfw::WindowHint::Samples(Some(4)));
 
         let (mut window, events) = glfw.create_window(w, h, "Hello this is window", glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window.");
@@ -40,7 +45,6 @@ impl EventLoop {
         window.set_mouse_button_polling(true);
         window.set_scroll_polling(true);
         // window.set_size_callback(|window: &mut Window, width: i32, height: i32| resize_callback(&*window, width, height));
-
 
         gl::load_with(|s| window.get_proc_address(s) );
         
@@ -151,7 +155,7 @@ impl EventLoop {
         }
     }
 
-    pub fn is_key_down(&mut self, key: Key) -> bool {
+    pub fn is_key_down(&self, key: Key) -> bool {
         if self.window.get_key(key) == Action::Press {
             true
         } else { 
@@ -159,7 +163,7 @@ impl EventLoop {
         }
     }
 
-    pub fn is_key_up(&mut self, key: Key) -> bool {
+    pub fn is_key_up(&self, key: Key) -> bool {
         if self.window.get_key(key) == Action::Release {
             true
         } else {
@@ -168,9 +172,9 @@ impl EventLoop {
     }
 
     // TODO: Fix this for the love of gohf
-    pub fn set_fullscreen(&mut self, fullscreen: &bool) {
+    pub fn set_fullscreen(&mut self, fullscreen: &mut bool) {
         if self.event_handler.key_just_pressed(Key::F11) {
-            if !fullscreen {
+            if !*fullscreen {
                 self.glfw.with_primary_monitor(|_, monitor| {
                     let monitor = monitor.unwrap();
                     let mode = monitor.get_video_mode().unwrap();
@@ -182,6 +186,7 @@ impl EventLoop {
                         mode.height, 
                         Some(mode.refresh_rate),
                     );
+                    *fullscreen = true;
                 });
             } else {
                 self.glfw.with_primary_monitor(|_, monitor| {
@@ -195,6 +200,7 @@ impl EventLoop {
                         800, 
                         Some(mode.refresh_rate),
                     );
+                    *fullscreen = false;
                 });
             }
         }

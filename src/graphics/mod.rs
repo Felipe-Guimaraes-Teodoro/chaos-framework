@@ -7,7 +7,9 @@ mod r#macro;
 mod SHADERS;
 mod camera;
 mod light;
+mod model;
 
+pub use model::*;
 pub use light::*;
 pub use camera::*;
 pub use SHADERS::*;

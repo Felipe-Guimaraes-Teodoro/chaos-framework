@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::{Index, IndexMut}, path::PathBuf, rc::Rc};
+use std::{collections::HashMap, ops::{Index, IndexMut}};
 
 use gl::types::{GLint, GLsizei, GLuint, GLvoid};
 

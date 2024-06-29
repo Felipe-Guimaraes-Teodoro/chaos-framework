@@ -6,7 +6,7 @@ use std::{collections::HashMap, ptr};
 use std::ffi::CString;
 
 use gl::{*, types::GLsizei};
-use glam::{vec3, Mat4, Quat, Vec3, Vec4};
+use glam::{Mat4, Quat, Vec3};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Mesh {

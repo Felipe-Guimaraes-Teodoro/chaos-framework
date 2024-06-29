@@ -1,13 +1,14 @@
-use std::{collections::HashMap, ffi::CString, ops::{Index, IndexMut}};
+use std::collections::HashMap;
 
 use gl::{UseProgram, types::GLuint};
 
-use crate::{Camera, Light, LightHandle, Mesh, MeshHandle, Texture, TextureHandle, DEFAULT_SHADER};
+use crate::{Camera, Light, LightHandle, Mesh, MeshHandle, Model, ModelHandle, TextureHandle, DEFAULT_SHADER};
 
 pub struct Renderer {
     pub meshes: HashMap<MeshHandle, Mesh>,
     pub lights: HashMap<LightHandle, Light>,
     pub textures: HashMap<TextureHandle, GLuint>,
+    pub models: HashMap<ModelHandle, Model>,
     pub camera: Camera,
 } 
 
@@ -19,6 +20,7 @@ impl Renderer {
             meshes: HashMap::new(),
             lights: HashMap::new(),
             textures: HashMap::new(),
+            models: HashMap::new(),
         }
     }
 
@@ -34,6 +36,10 @@ impl Renderer {
                 mesh.has_been_set_up = true;
             }
             mesh.draw();
+        }
+
+        for model in self.models.values() {
+            model.draw();
         }
     }
 

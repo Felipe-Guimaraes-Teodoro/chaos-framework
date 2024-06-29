@@ -3,7 +3,7 @@ use gl::types::*;
 use glam::Vec3;
 
 use std::ptr;
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Shader {

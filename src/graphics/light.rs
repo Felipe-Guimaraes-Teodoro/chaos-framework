@@ -1,5 +1,5 @@
 use gl::UseProgram;
-use glam::{vec3, Vec3};
+use glam::Vec3;
 
 use std::{collections::HashMap, ffi::CString, ops::{Index, IndexMut}};
 

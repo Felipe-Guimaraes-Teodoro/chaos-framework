@@ -1,5 +1,5 @@
 use glam::{vec3, Mat4, Vec2, Vec3};
-use glfw::{self, Action, Key};
+use glfw::{self, Key};
 use crate::{cstr, graphics::shader::Shader, EventLoop};
 use std::ffi::CString;
 

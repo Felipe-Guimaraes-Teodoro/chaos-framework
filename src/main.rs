@@ -53,9 +53,9 @@ fn main() {
         el.update();
         el.set_fullscreen(&mut is_fullscreen);
         
-        renderer.camera.input(&el, &el.window.glfw);
+        renderer.camera.input(&el);
         renderer.camera.mouse_callback(el.event_handler.mouse_pos, &el.window);
-        renderer.camera.update(renderer.camera.pos);
+        renderer.camera.update(renderer.camera.pos, &el);
         
         let model = &mut renderer.models[bart_handle];
         let mut goal = model.meshes[0].position;

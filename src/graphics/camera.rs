@@ -1,4 +1,4 @@
-use glam::{vec3, Mat4, Vec2, Vec3};
+use glam::{vec3, Mat4, Vec2, Vec3, Vec4};
 use glfw::{self, Key};
 use crate::{cstr, graphics::shader::Shader, EventLoop};
 use std::ffi::CString;
@@ -6,15 +6,20 @@ use std::ffi::CString;
 const UP: Vec3 = Vec3::Y;
 const SENSITIVITY: f32 = 0.1; // todo: make this editable
 
+#[derive(Clone, Copy, Debug)]
 pub enum ProjectionType {
     Perspective,
     Orthographic,
+    Isometric,
+    Oblique,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Camera {
     pub proj: Mat4,
     pub view: Mat4,
+
+    projection_type: ProjectionType,
 
     pub pos: Vec3,
     _target: Vec3,
@@ -71,13 +76,15 @@ impl Camera {
             dt: 0.0,
             last_frame: 0.0,
 
+            projection_type: ProjectionType::Perspective,
+
             first_mouse: true,
             last_x: 400.0,
             last_y: 400.0,
         }
     }
 
-    pub fn update(&mut self, y: Vec3) {
+    pub fn update(&mut self, y: Vec3, el: &EventLoop) {
         self.pos = y;
         
         self.view = Mat4::look_at_rh(
@@ -85,15 +92,45 @@ impl Camera {
             self.pos + self.front,
             self.up,
         );
+        
+        let (w, h) = el.window.get_framebuffer_size();
+
+        match self.projection_type {
+            ProjectionType::Orthographic => {
+                let ar = w as f32 / h as f32;
+        
+                self.proj = Mat4::orthographic_rh(-ar, ar, -1.0, 1.0, -100.0, 100.0);
+            }
+
+            ProjectionType::Perspective => {
+                self.proj = Mat4::perspective_rh_gl(70.0f32.to_radians(), w as f32 / h as f32, 0.0001, 1000.0);
+            }
+
+            ProjectionType::Isometric => {
+                let rotate_y = Mat4::from_rotation_y(45.0_f32.to_radians());
+                let rotate_x = Mat4::from_rotation_x(35.064_f32.to_radians());
+                self.proj = rotate_x * rotate_y;
+            }
+
+            ProjectionType::Oblique => {
+                let scale = 0.5;
+                let angle = 45.0;
+
+                let angle_rad = f32::to_radians(angle);
+                let mut mat = Mat4::IDENTITY;
+                *mat.col_mut(2) = Vec4::new(scale * angle_rad.cos(), scale * angle_rad.sin(), 1.0, 0.0);
+
+                self.proj = mat;
+            }
+        }
     }
 
     pub fn input(
         &mut self,
         el: &EventLoop, 
-        glfw: &glfw::Glfw,
     ) {
         let mut speed = self.speed;
-        let curr_frame = glfw.get_time() as f32;
+        let curr_frame = el.window.glfw.get_time() as f32;
         self.dt = curr_frame - self.last_frame;
         self.last_frame = curr_frame;
 
@@ -123,9 +160,6 @@ impl Camera {
         if el.is_key_down(Key::D) {
             self.pos += speed * self.dt * self.front.cross(self.up).normalize(); 
         }
-
-        let (w, h) = el.window.get_framebuffer_size();
-        self.proj = Mat4::perspective_rh_gl(70.0f32.to_radians(), w as f32 / h as f32, 0.0001, 1000.0);
     }
 
     pub fn mouse_callback(
@@ -184,10 +218,16 @@ impl Camera {
     ) {
         match projection_type {
             ProjectionType::Perspective => {
-                self.proj = Mat4::perspective_rh_gl(70.0f32.to_radians(), 1.0, 0.1, 10000.0);
+                self.projection_type = ProjectionType::Perspective;
             },
             ProjectionType::Orthographic => {
-                self.proj = Mat4::orthographic_rh(-1.0, 1.0, -1.0, 1.0, -100.0, 100.0);
+                self.projection_type = ProjectionType::Orthographic;
+            },
+            ProjectionType::Isometric => {
+                self.projection_type = ProjectionType::Isometric;
+            },
+            ProjectionType::Oblique => {
+                self.projection_type = ProjectionType::Oblique;
             }
         }
     }

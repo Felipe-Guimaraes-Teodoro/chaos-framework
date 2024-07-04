@@ -8,6 +8,8 @@ mod SHADERS;
 mod camera;
 mod light;
 mod model;
+mod skeletal_mesh;
+mod animation;
 
 pub use model::*;
 pub use light::*;
@@ -18,4 +20,6 @@ pub use mesh::*;
 pub use renderer::*;
 pub use vertex::*;
 pub use shader::*;
+pub use skeletal_mesh::*;
 pub use texture::*;
+pub use animation::*;

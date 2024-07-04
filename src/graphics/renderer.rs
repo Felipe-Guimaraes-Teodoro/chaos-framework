@@ -2,10 +2,11 @@ use std::collections::HashMap;
 
 use gl::{UseProgram, types::GLuint};
 
-use crate::{Camera, Light, LightHandle, Mesh, MeshHandle, Model, ModelHandle, TextureHandle, DEFAULT_SHADER};
+use crate::{sMesh, sMeshHandle, Camera, Light, LightHandle, Mesh, MeshHandle, Model, ModelHandle, TextureHandle, DEFAULT_SHADER, RUSSIMP_SHADER};
 
 pub struct Renderer {
     pub meshes: HashMap<MeshHandle, Mesh>,
+    pub animated_meshes: HashMap<sMeshHandle, sMesh>,
     pub lights: HashMap<LightHandle, Light>,
     pub textures: HashMap<TextureHandle, GLuint>,
     pub models: HashMap<ModelHandle, Model>,
@@ -18,6 +19,7 @@ impl Renderer {
         Self {
             camera,
             meshes: HashMap::new(),
+            animated_meshes: HashMap::new(),
             lights: HashMap::new(),
             textures: HashMap::new(),
             models: HashMap::new(),
@@ -30,6 +32,11 @@ impl Renderer {
         self.send_light_uniforms(&DEFAULT_SHADER);
         UseProgram(0);
 
+        RUSSIMP_SHADER.use_shader();
+        self.camera.send_uniforms(&RUSSIMP_SHADER);
+        self.send_light_uniforms(&RUSSIMP_SHADER);
+        UseProgram(0);
+
         for mesh in self.meshes.values_mut() {
             if mesh.has_been_set_up == false {
                 mesh.setup_mesh();
@@ -40,6 +47,14 @@ impl Renderer {
 
         for model in self.models.values() {
             model.draw();
+        }
+
+        for animated_mesh in self.animated_meshes.values_mut() {
+            if animated_mesh.has_been_set_up == false {
+                animated_mesh.setup_mesh();
+                animated_mesh.has_been_set_up = true;
+            }
+            animated_mesh.draw();
         }
     }
 

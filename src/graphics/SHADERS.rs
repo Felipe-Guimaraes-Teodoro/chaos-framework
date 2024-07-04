@@ -83,10 +83,69 @@ void main()
 }
 "#;
 
+
+pub static RUSSIMP_VS: &str = r#"
+#version 430 core
+
+layout(location = 0) in vec3 pos;
+layout(location = 1) in vec3 norm;
+layout(location = 2) in vec2 tex;
+// lets just ignore the tangent and bitangent
+layout(location = 3) in ivec4 boneIds; 
+layout(location = 4) in vec4 weights;
+	
+uniform mat4 proj;
+uniform mat4 view;
+uniform mat4 model;
+uniform vec3 color;
+	
+const int MAX_BONES = 100;
+const int MAX_BONE_INFLUENCE = 4;
+uniform mat4 finalBonesMatrices[MAX_BONES];
+
+out vec2 TexCoord;
+out vec3 Normal;
+out vec3 FragPos;
+out vec4 fColor;
+
+
+
+void main()
+{
+    vec4 totalPosition = vec4(pos, 1.0);
+    for(int i = 0 ; i < MAX_BONE_INFLUENCE ; i++)
+    {
+        if(boneIds[i] == -1) 
+            continue;
+        if(boneIds[i] >=MAX_BONES) 
+        {
+            totalPosition = vec4(pos,1.0f);
+            break;
+        }
+        vec4 localPosition = finalBonesMatrices[boneIds[i]] * vec4(pos, 1.0f);
+        totalPosition += localPosition * weights[i];
+        vec3 localNormal = mat3(finalBonesMatrices[boneIds[i]]) * norm;
+    }
+		
+    mat4 viewModel = view * model;
+    gl_Position =  proj * viewModel * totalPosition;
+
+    TexCoord = tex;
+    fColor = vec4(color, 1.0);
+    FragPos = vec3(model * vec4(pos, 1.0));
+    Normal = mat3(transpose(inverse(model))) * norm;  
+    // Normal = totalNormal;
+}
+"#;
+
 use once_cell::sync::Lazy;
 
 use crate::Shader;
 
 pub static DEFAULT_SHADER: Lazy<Shader> = Lazy::new(|| {
     Shader::new_pipeline(DEFAULT_SHADER_VS, DEFAULT_SHADER_FS)
+});
+
+pub static RUSSIMP_SHADER: Lazy<Shader> = Lazy::new(|| {
+    Shader::new_pipeline(RUSSIMP_VS, DEFAULT_SHADER_FS)
 });

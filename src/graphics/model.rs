@@ -1,11 +1,11 @@
-use std::{collections::HashMap, hash::Hash, ops::{Index, IndexMut}, path::Path};
+use std::{cmp::Ordering, collections::HashMap, hash::Hash, ops::{Index, IndexMut}, path::Path};
 
 use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3, Vec4};
-use russimp::{bone::{Bone, VertexWeight}, mesh::Mesh as rMesh, scene::Scene, Matrix4x4};
+use russimp::{bone::{Bone, VertexWeight}, mesh::Mesh as rMesh, property::{Property, PropertyStore}, scene::{PostProcess, Scene}, Matrix4x4};
 use tobj::LoadOptions;
 use gl::types::GLuint;
 
-use crate::{sBone, sMesh, sVertex, BoneInfo, Mesh, Renderer, Texture, Vertex, MAX_BONE_INFLUENCE};
+use crate::{Mesh, Renderer, SkeletalMesh, SkeletalVertex, Texture, Vertex, MAX_BONE_INFLUENCE};
 
 
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
@@ -32,7 +32,6 @@ pub struct Model {
     pub meshes: Vec<Mesh>,
     pub loaded_textures: Vec<GLuint>,
 
-    pub bone_info_map: HashMap<String, BoneInfo>,
     bone_counter: i32,
 }
 
@@ -48,56 +47,8 @@ impl Model {
         Self {
             meshes: vec![],
             loaded_textures: vec![],
-            bone_info_map: HashMap::new(),
             bone_counter: 0,
         }
-    }
-
-    pub fn extract_mesh(&mut self, path: &str, u: usize) -> Mesh {
-        let path = Path::new(path);
-        
-        let load_options = LoadOptions {
-            single_index: true,
-            triangulate: true,
-            ignore_points: true,
-            ignore_lines: true,
-        };
-
-        let obj = tobj::load_obj(path, &load_options).expect("Failed to load OBJ file");
-        let (models, _) = obj;
-
-        for model in models {
-            let mesh = &model.mesh;
-            let num_vertices = mesh.positions.len() / 3;
-            let indices: Vec<u32> = mesh.indices.clone();
-
-            let mut vertices = Vec::with_capacity(num_vertices);
-
-            let (p, n, t, c) = (&mesh.positions, &mesh.normals, &mesh.texcoords, &mesh.vertex_color);
-
-            for i in 0..num_vertices {
-                let pos = vec3(p[i*3], p[i*3+1], p[i*3+2]);
-                let tex_coords = vec2(t[i*2], t[i*2+1]);
-                let normal = if n.len() >= (i + 1) * 3 {
-                    vec3(n[i * 3], n[i * 3 + 1], n[i * 3 + 2])
-                } else {
-                    Vec3::ZERO
-                };
-                let color = if c.len() >= (i + 1) * 3 {
-                    vec4(c[i * 3], c[i * 3 + 1], c[i * 3 + 2], 1.0)
-                } else {
-                    Vec4::ONE
-                };
-                vertices.push(
-                    Vertex::new(pos, color, tex_coords, normal)
-                );
-            }
-
-            
-            self.meshes.push(Mesh::new(&vertices, &indices));
-        }
-
-        self.meshes[u].clone()
     }
 
     pub fn load(&mut self, path: &str) {
@@ -154,8 +105,6 @@ impl Model {
                 face.reverse();
             }
 
-            final_mesh.setup_mesh();
-
             self.meshes.push(final_mesh);
         }
     }
@@ -173,96 +122,91 @@ impl Model {
         for mesh in &self.meshes {
             mesh.draw();
         }
-    } 
+    }
 
-    pub fn process_mesh(&mut self, scene: &Scene, id: usize) -> sMesh {
-        let rmesh = &scene.meshes[id];
+    /* TODO: function that takes in an empty mesh and loads its vertex data with russimp as well as bones accordingly */
+
+    pub fn load_russimp<'t>(path: &'t str) -> (SkeletalMesh, Scene) {
+        let scene = Scene::from_file(
+            path, 
+            vec![
+                PostProcess::Triangulate,
+
+            ],
+        ).unwrap();
+
+        let russimp_mesh = &scene.meshes[0];
+        
+        let positions = russimp_mesh.vertices.iter().map(|v| {
+            return vec3(v.x, v.y, v.z);
+        }).collect::<Vec<Vec3>>();
+
+        let normals = russimp_mesh.normals.iter().map(|n| {
+            return vec3(n.x, n.y, n.z);
+        }).collect::<Vec<Vec3>>();
+
+        let indices = russimp_mesh.faces.iter().map(|f| {
+            return f.0.clone();
+        }).flatten().collect::<Vec<u32>>();
+
+        let tex_coords = russimp_mesh.texture_coords[0].clone().unwrap().iter().map(|t| {
+            return vec2(t.x, t.y);
+        }).collect::<Vec<Vec2>>();
+
+        let bones = &russimp_mesh.bones;
+
+        let (bone_ids, weights) = Self::collect_bone_data(bones);
 
         let mut vertices = vec![];
-        let indices: Vec<u32> = rmesh.faces.iter()
-            .flat_map(|face| face.0.iter().copied())
-            .collect();
 
-        for i in 0..rmesh.vertices.len() {
-            let mut vertex = sVertex::default();
-
-            vertex.position = vec3(rmesh.vertices[i].x, rmesh.vertices[i].y, rmesh.vertices[i].z);
-            vertex.normal = vec3(rmesh.normals[i].x, rmesh.normals[i].y, rmesh.normals[i].z);
-
-            if let Some(Some(tex_coords)) = rmesh.texture_coords.get(0) {
-                vertex.tex_coords = tex_coords.get(i).map_or(Vec2::ZERO, |tc| Vec2::new(tc.x, tc.y));
-            } else {
-                vertex.tex_coords = Vec2::ZERO;
-            }
-
-            self.set_vertex_bone_data_to_default(&mut vertex);
-
-            vertices.push(vertex);
+        for i in 0..positions.len() {
+            vertices.push(SkeletalVertex {
+                position: positions[i],
+                normal: normals[i],
+                tex_coords: tex_coords[i],
+                bone_ids: bone_ids[i],
+                weights: weights[i],
+            });
         }
-
-        self.extract_bone_weight_for_vertices(&mut vertices, rmesh);
-
-        sMesh::new(vertices, indices)
+        
+        (SkeletalMesh::new(&vertices, &indices), scene)
     }
 
-    fn set_vertex_bone_data(vertex: &mut sVertex, id: i32, weight: f32) {
-        for i in 0..MAX_BONE_INFLUENCE {
-            if vertex.bone_ids[i] < 0 {
-                vertex.weights[i] = weight;
-                vertex.bone_ids[i] = id; 
-                break;
+    fn collect_bone_data(bones: &Vec<Bone>) -> (Vec<[i32; MAX_BONE_INFLUENCE]>, Vec<[f32; MAX_BONE_INFLUENCE]>) {
+        let num_vertices = bones.iter().flat_map(|bone| bone.weights.iter()).map(|w| w.vertex_id).max().unwrap_or(0) + 1;
+    
+        let mut bone_ids = vec![[0; MAX_BONE_INFLUENCE]; num_vertices as usize];
+        let mut weights = vec![[0.0; MAX_BONE_INFLUENCE]; num_vertices as usize];
+    
+        let mut vertex_influences: Vec<Vec<(i32, f32)>> = vec![Vec::new(); num_vertices as usize];
+    
+        for (bone_id, bone) in bones.iter().enumerate() {
+            for weight in &bone.weights {
+                vertex_influences[weight.vertex_id as usize].push((bone_id as i32, weight.weight));
             }
         }
-    }
-
-    fn extract_bone_weight_for_vertices(&mut self, vertices: &mut Vec<sVertex>, mesh: &rMesh) {
-        for bone_index in 0..mesh.bones.len() {
-            let mut bone_id = -1;
-            let bone_name = mesh.bones[bone_index].name.clone();
-
-            if !self.bone_info_map.contains_key(&bone_name) {
-                let new_bone_info = BoneInfo {
-                    id: self.bone_counter,
-                    ofs: convert_russimp_mat_to_glam_mat(mesh.bones[bone_index].offset_matrix),
-                };
-                self.bone_info_map.insert(bone_name.clone(), new_bone_info);
-                bone_id = self.bone_counter;
-                self.bone_counter += 1;
-            } else {
-                bone_id = self.bone_info_map[&bone_name].id;
-            }
-
-            assert!(bone_id != -1);
-
-            let weights = &mesh.bones[bone_index].weights;
-            let num_weights = weights.len();
-
-            for weight_index in 0..num_weights {
-                let vertex_id = weights[weight_index].vertex_id;
-                let weight = weights[weight_index].weight;
-                assert!(vertex_id < vertices.len() as u32);
-                Self::set_vertex_bone_data(&mut vertices[vertex_id as usize], bone_id, weight);
+    
+        for (vertex_id, influences) in vertex_influences.iter_mut().enumerate() {
+            influences.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+    
+            for (i, &(bone_id, weight)) in influences.iter().take(MAX_BONE_INFLUENCE).enumerate() {
+                bone_ids[vertex_id][i] = bone_id;
+                weights[vertex_id][i] = weight;
             }
         }
-    }
-
-    fn set_vertex_bone_data_to_default(&self, vertex: &mut sVertex) {
-        for i in 0..MAX_BONE_INFLUENCE {
-            vertex.bone_ids[i] = -1;
-            vertex.weights[i] = 0.0;
-        }
+    
+        (bone_ids, weights)
     }
 }
 
 pub fn convert_russimp_mat_to_glam_mat(mat: Matrix4x4) -> Mat4 {
     Mat4::from_cols_array(&[
-        mat.a1, mat.a2, mat.a3, mat.a4,
-        mat.b1, mat.b2, mat.b3, mat.b4,
-        mat.c1, mat.c2, mat.c3, mat.c4,
-        mat.d1, mat.d2, mat.d3, mat.d4,
+        mat.a1, mat.b1, mat.c1, mat.d1,
+        mat.a2, mat.b2, mat.c2, mat.d2,
+        mat.a3, mat.b3, mat.c3, mat.d3,
+        mat.a4, mat.b4, mat.c4, mat.d4,
     ])
 }
-
 
 impl Renderer {
     pub fn add_model(&mut self, model: Model) -> Option<ModelHandle> {

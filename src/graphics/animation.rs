@@ -1,8 +1,10 @@
 use std::{collections::HashMap, rc::Rc, ffi::CString};
 use glam::{vec3, Mat4, Quat, Vec3};
-use russimp::{node::Node, property::PropertyStore, scene::{PostProcess, Scene}};
+use russimp::{bone::{Bone, VertexWeight}, mesh::Mesh, node::Node, property::PropertyStore, scene::{PostProcess, Scene}};
 
-use crate::{convert_russimp_mat_to_glam_mat, cstr, BoneInfo, Model, Shader};
+use crate::{convert_russimp_mat_to_glam_mat, cstr, Model, Shader, SkeletalMesh};
+
+use super::skeletal_mesh;
 
 #[derive(Copy, Clone)]
 struct KeyPosition {
@@ -32,8 +34,8 @@ struct aBone {
     num_scalings: usize,
 
     local_transform: Mat4,
-    name: String,
     id: i32,
+    name: String,
 }
 
 impl aBone {
@@ -171,24 +173,27 @@ impl aBone {
 
 #[derive(Default, Clone)]
 struct RussimpNodeData {
-    transformation: Mat4,
-    name: String,
-    children_count: i32,
-    children: Vec<Self>,
+    pub transformation: Mat4,
+    pub name: String,
+    pub children_count: i32,
+    pub children: Vec<Self>,
+}
+
+struct BoneInfo {
+    bone: Bone,
+    id: usize,
 }
 
 pub struct Animation {
-    duration: f32,
-    ticks_per_second: i32,
-    bones: Vec<aBone>,
-    root_node: RussimpNodeData,
-    bone_info_map: HashMap<String, BoneInfo>,
+    pub duration: f32,
+    pub ticks_per_second: i32,
+    pub bones: Vec<aBone>,
+    pub root_node: RussimpNodeData,
+    pub bone_map: HashMap<String, BoneInfo>,
 }
 
 impl Animation {
-    pub fn new(path: &str, model: &mut crate::Model) -> Self {
-        let scene = load_scene(path);
-
+    pub fn new(scene: Scene) -> Self {
         let russimp_animation = &scene.animations[0];
 
         let mut root_node = RussimpNodeData::default();
@@ -199,10 +204,10 @@ impl Animation {
             ticks_per_second: russimp_animation.ticks_per_second as i32,
             bones: vec![],
             root_node,
-            bone_info_map: HashMap::new(),
+            bone_map: HashMap::new(),
         };
 
-        animation.read_missing_bones(russimp_animation, model);
+        animation.read_missing_bones(russimp_animation, &scene.meshes[0]);
 
         animation
     }
@@ -211,28 +216,28 @@ impl Animation {
         self.bones.iter_mut().find(|bone| bone.name == name)
     }
 
-    fn read_missing_bones(&mut self, animation: &russimp::animation::Animation, model: &mut Model) {
+    fn read_missing_bones(&mut self, animation: &russimp::animation::Animation, mesh: &Mesh) {
         let size = animation.channels.len();
 
-        let bone_count = &mut model.bone_info_map.len();
-        let bone_info_map = &mut model.bone_info_map;
+        for (id, r_bone) in mesh.bones.iter().enumerate() {
+            let weights = r_bone.weights.iter().map(|w| {
+                VertexWeight { weight: w.weight, vertex_id: w.vertex_id }
+            }).collect::<Vec<VertexWeight>>(); 
+
+            let bone = Bone { 
+                weights, 
+                name: r_bone.name.clone(), 
+                offset_matrix: r_bone.offset_matrix, 
+            };
+            self.bone_map.insert(bone.name.clone(), BoneInfo { bone, id });
+        }
 
         for i in 0..size {
             let channel = &animation.channels[i];
             let bone_name = channel.name.clone();
 
-            if !bone_info_map.contains_key(&bone_name) {
-                bone_info_map.insert(bone_name.clone(), BoneInfo {
-                    id: *bone_count as i32,
-                    ofs: Mat4::IDENTITY, // Initialize offset, replace with actual if needed
-                });
-                *bone_count += 1;
-            }
-
-            self.bones.push(aBone::new(&bone_name, bone_info_map[&bone_name].id, channel));
+            self.bones.push(aBone::new(&bone_name, i as i32, channel));
         }
-
-        self.bone_info_map = bone_info_map.clone();
     }
 
     fn read_hierarchy_data(dest: &mut RussimpNodeData, src: Rc<Node>) {
@@ -248,29 +253,11 @@ impl Animation {
     }
 }
 
-pub fn load_scene(path: &str) -> Scene {
-    let props = PropertyStore::default();
-
-    Scene::from_file_with_props(
-        path,
-        vec![
-            // PostProcess::OptimizeMeshes,
-            PostProcess::Triangulate,
-            // PostProcess::GenerateSmoothNormals,
-            // PostProcess::FlipWindingOrder,
-            // PostProcess::JoinIdenticalVertices,
-            // PostProcess::OptimizeGraph,
-        ],
-        &props,
-    )
-    .unwrap()
-}
-
 pub struct Animator {
-    final_bone_matrices: Vec<Mat4>,
-    current_animation: Animation,
-    current_time: f32,
-    delta_time: f32,
+    pub final_bone_matrices: Vec<Mat4>,
+    pub current_animation: Animation,
+    pub current_time: f32,
+    pub delta_time: f32,
 }
 
 impl Animator {
@@ -289,36 +276,36 @@ impl Animator {
         self.delta_time = dt;
 
         self.current_time += self.current_animation.ticks_per_second as f32 * dt;
-        self.current_time = self.current_time - (self.current_time / self.current_animation.duration).floor() * self.current_animation.duration;
+        // self.current_time = self.current_time - (self.current_time / self.current_animation.duration).floor() * self.current_animation.duration;
+        self.current_time %= self.current_animation.duration;
 
         let root = self.current_animation.root_node.clone();
         self.calculate_bone_transform(&root, Mat4::IDENTITY);
     }
 
-    /* 
     fn calculate_bone_transform(&mut self, node: &RussimpNodeData, parent_transform: Mat4) {
-        let node_name = &node.name;
         let mut node_transform = node.transformation;
 
-        if let Some(bone) = self.current_animation.find_bone(node_name) {
+        if let Some(bone) = self.current_animation.find_bone(&node.name) {
             bone.update(self.current_time);
             node_transform = bone.local_transform;
         }
 
-        let global_transformation = parent_transform * node_transform;
+        let global_transform = parent_transform * node_transform;
 
-        if let Some(bone_info) = self.current_animation.bone_info_map.get(node_name) {
+        if let Some(bone_info) = self.current_animation.bone_map.get(&node.name) {
             let index = bone_info.id;
-            let offset = bone_info.ofs;
-            self.final_bone_matrices[index as usize] = global_transformation * offset;
+            if index < 100 {
+                self.final_bone_matrices[index] = global_transform * convert_russimp_mat_to_glam_mat(bone_info.bone.offset_matrix) * 0.000001;
+            }
         }
 
         for child in &node.children {
-            self.calculate_bone_transform(child, global_transformation);
+            self.calculate_bone_transform(child, global_transform);
         }
     }
-    */ 
     
+    /* 
     fn calculate_bone_transform(&mut self, node: &RussimpNodeData, parent_transform: glam::Mat4) {
         let mut node_transform = node.transformation;
     
@@ -340,7 +327,7 @@ impl Animator {
             self.calculate_bone_transform(child, global_transformation);
         }
     }
-
+    */
     pub fn upload_uniforms(&self, shader: &Shader) {
         for (i, matrix) in self.final_bone_matrices.iter().enumerate() {
             unsafe {

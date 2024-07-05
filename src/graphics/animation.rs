@@ -1,8 +1,10 @@
 use std::{collections::HashMap, rc::Rc, ffi::CString};
 use glam::{vec3, Mat4, Quat, Vec3};
-use russimp::{node::Node, property::PropertyStore, scene::{PostProcess, Scene}};
+use russimp::{bone::{Bone, VertexWeight}, mesh::Mesh, node::Node, property::PropertyStore, scene::{PostProcess, Scene}};
 
-use crate::{convert_russimp_mat_to_glam_mat, cstr, BoneInfo, Model, Shader};
+use crate::{convert_russimp_mat_to_glam_mat, cstr, Model, Shader, SkeletalMesh};
+
+use super::skeletal_mesh;
 
 #[derive(Copy, Clone)]
 struct KeyPosition {
@@ -32,8 +34,8 @@ struct aBone {
     num_scalings: usize,
 
     local_transform: Mat4,
-    name: String,
     id: i32,
+    name: String,
 }
 
 impl aBone {
@@ -182,13 +184,11 @@ pub struct Animation {
     ticks_per_second: i32,
     bones: Vec<aBone>,
     root_node: RussimpNodeData,
-    bone_info_map: HashMap<String, BoneInfo>,
+    bone_map: HashMap<String, Bone>,
 }
 
 impl Animation {
-    pub fn new(path: &str, model: &mut crate::Model) -> Self {
-        let scene = load_scene(path);
-
+    pub fn new(path: &str, scene: Scene) -> Self {
         let russimp_animation = &scene.animations[0];
 
         let mut root_node = RussimpNodeData::default();
@@ -199,10 +199,10 @@ impl Animation {
             ticks_per_second: russimp_animation.ticks_per_second as i32,
             bones: vec![],
             root_node,
-            bone_info_map: HashMap::new(),
+            bone_map: HashMap::new(),
         };
 
-        animation.read_missing_bones(russimp_animation, model);
+        animation.read_missing_bones(russimp_animation, &scene.meshes[0]);
 
         animation
     }
@@ -211,28 +211,28 @@ impl Animation {
         self.bones.iter_mut().find(|bone| bone.name == name)
     }
 
-    fn read_missing_bones(&mut self, animation: &russimp::animation::Animation, model: &mut Model) {
+    fn read_missing_bones(&mut self, animation: &russimp::animation::Animation, mesh: &Mesh) {
         let size = animation.channels.len();
 
-        let bone_count = &mut model.bone_info_map.len();
-        let bone_info_map = &mut model.bone_info_map;
+        for r_bone in &mesh.bones {
+            let weights = r_bone.weights.iter().map(|w| {
+                VertexWeight { weight: w.weight, vertex_id: w.vertex_id }
+            }).collect::<Vec<VertexWeight>>(); 
+
+            let bone = Bone { 
+                weights, 
+                name: r_bone.name.clone(), 
+                offset_matrix: r_bone.offset_matrix, 
+            };
+            self.bone_map.insert(bone.name.clone(), bone);
+        }
 
         for i in 0..size {
             let channel = &animation.channels[i];
             let bone_name = channel.name.clone();
 
-            if !bone_info_map.contains_key(&bone_name) {
-                bone_info_map.insert(bone_name.clone(), BoneInfo {
-                    id: *bone_count as i32,
-                    ofs: Mat4::IDENTITY, // Initialize offset, replace with actual if needed
-                });
-                *bone_count += 1;
-            }
-
-            self.bones.push(aBone::new(&bone_name, bone_info_map[&bone_name].id, channel));
+            self.bones.push(aBone::new(&bone_name, i as i32, channel));
         }
-
-        self.bone_info_map = bone_info_map.clone();
     }
 
     fn read_hierarchy_data(dest: &mut RussimpNodeData, src: Rc<Node>) {
@@ -246,24 +246,6 @@ impl Animation {
             dest.children.push(new_data);
         }
     }
-}
-
-pub fn load_scene(path: &str) -> Scene {
-    let props = PropertyStore::default();
-
-    Scene::from_file_with_props(
-        path,
-        vec![
-            // PostProcess::OptimizeMeshes,
-            PostProcess::Triangulate,
-            // PostProcess::GenerateSmoothNormals,
-            // PostProcess::FlipWindingOrder,
-            // PostProcess::JoinIdenticalVertices,
-            // PostProcess::OptimizeGraph,
-        ],
-        &props,
-    )
-    .unwrap()
 }
 
 pub struct Animator {

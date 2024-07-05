@@ -108,11 +108,9 @@ out vec3 Normal;
 out vec3 FragPos;
 out vec4 fColor;
 
-
-
 void main()
 {
-    vec4 totalPosition = vec4(pos, 1.0);
+    vec4 totalPosition = vec4(0.0);
     for(int i = 0 ; i < MAX_BONE_INFLUENCE ; i++)
     {
         if(boneIds[i] == -1) 

@@ -5,7 +5,7 @@ use glam::{Vec2, Vec3};
 use gl::{*, types::*};
 
 use crate::graphics::vertex;
-use crate::{bind_buffer, gen_attrib_pointers, Mesh};
+use crate::{bind_buffer, gen_attrib_pointers, Mesh, RUSSIMP_SHADER};
 
 pub const MAX_BONE_INFLUENCE: usize = 4;
 
@@ -81,7 +81,7 @@ impl SkeletalMesh {
             scale: Vec3::ONE,
             texture: 0,
             color: Vec3::ONE,
-            shader: *DEFAULT_SHADER,
+            shader: *RUSSIMP_SHADER,
             parent: None,
             children: Vec::new(),
             has_been_set_up: false,

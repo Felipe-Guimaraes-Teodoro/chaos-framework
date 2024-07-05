@@ -201,13 +201,12 @@ impl Model {
 
 pub fn convert_russimp_mat_to_glam_mat(mat: Matrix4x4) -> Mat4 {
     Mat4::from_cols_array(&[
-        mat.a1, mat.a2, mat.a3, mat.a4,
-        mat.b1, mat.b2, mat.b3, mat.b4,
-        mat.c1, mat.c2, mat.c3, mat.c4,
-        mat.d1, mat.d2, mat.d3, mat.d4,
+        mat.a1, mat.b1, mat.c1, mat.d1,
+        mat.a2, mat.b2, mat.c2, mat.d2,
+        mat.a3, mat.b3, mat.c3, mat.d3,
+        mat.a4, mat.b4, mat.c4, mat.d4,
     ])
 }
-
 
 impl Renderer {
     pub fn add_model(&mut self, model: Model) -> Option<ModelHandle> {

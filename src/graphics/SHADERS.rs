@@ -90,17 +90,15 @@ pub static RUSSIMP_VS: &str = r#"
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 norm;
 layout(location = 2) in vec2 tex;
-// lets just ignore the tangent and bitangent
 layout(location = 3) in ivec4 boneIds; 
 layout(location = 4) in vec4 weights;
-	
+
 uniform mat4 proj;
 uniform mat4 view;
 uniform mat4 model;
 uniform vec3 color;
-	
+
 const int MAX_BONES = 100;
-const int MAX_BONE_INFLUENCE = 4;
 uniform mat4 finalBonesMatrices[MAX_BONES];
 
 out vec2 TexCoord;
@@ -110,30 +108,24 @@ out vec4 fColor;
 
 void main()
 {
-    vec4 totalPosition = vec4(0.0);
-    for(int i = 0 ; i < MAX_BONE_INFLUENCE ; i++)
-    {
-        if(boneIds[i] == -1) 
-            continue;
-        if(boneIds[i] >=MAX_BONES) 
-        {
-            totalPosition = vec4(pos,1.0f);
-            break;
+    mat4 boneTransform = mat4(0.0);
+    for (int i = 0; i < 4; i++) {
+        if (boneIds[i] != -1) {
+            boneTransform += finalBonesMatrices[boneIds[i]] * weights[i];
         }
-        vec4 localPosition = finalBonesMatrices[boneIds[i]] * vec4(pos, 1.0f);
-        totalPosition += localPosition * weights[i];
-        vec3 localNormal = mat3(finalBonesMatrices[boneIds[i]]) * norm;
     }
-		
-    mat4 viewModel = view * model;
-    gl_Position =  proj * viewModel * totalPosition;
+    
+    vec4 f_pos = boneTransform * vec4(pos, 1.0);
+    gl_Position = proj * view * model * f_pos;
 
     TexCoord = tex;
     fColor = vec4(color, 1.0);
-    FragPos = vec3(model * vec4(pos, 1.0));
+    FragPos = vec3(model * f_pos);
+
+    // Correcting the normal transformation
     Normal = mat3(transpose(inverse(model))) * norm;  
-    // Normal = totalNormal;
 }
+
 "#;
 
 use once_cell::sync::Lazy;

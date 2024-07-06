@@ -126,15 +126,7 @@ impl Model {
 
     /* TODO: function that takes in an empty mesh and loads its vertex data with russimp as well as bones accordingly */
 
-    pub fn load_russimp<'t>(path: &'t str) -> (SkeletalMesh, Scene) {
-        let scene = Scene::from_file(
-            path, 
-            vec![
-                PostProcess::Triangulate,
-
-            ],
-        ).unwrap();
-
+    pub fn load_skeletal<'t>(scene: &Scene) -> SkeletalMesh {
         let russimp_mesh = &scene.meshes[0];
         
         let positions = russimp_mesh.vertices.iter().map(|v| {
@@ -169,7 +161,7 @@ impl Model {
             });
         }
         
-        (SkeletalMesh::new(&vertices, &indices), scene)
+        SkeletalMesh::new(&vertices, &indices)
     }
 
     fn collect_bone_data(bones: &Vec<Bone>) -> (Vec<[i32; MAX_BONE_INFLUENCE]>, Vec<[f32; MAX_BONE_INFLUENCE]>) {
@@ -197,6 +189,16 @@ impl Model {
     
         (bone_ids, weights)
     }
+}
+
+pub fn load_scene(path: &str) -> Scene {
+    Scene::from_file(
+        path, 
+        vec![
+            PostProcess::Triangulate,
+
+        ],
+    ).unwrap()
 }
 
 pub fn convert_russimp_mat_to_glam_mat(mat: Matrix4x4) -> Mat4 {

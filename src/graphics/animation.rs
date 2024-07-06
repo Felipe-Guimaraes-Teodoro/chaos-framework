@@ -2,7 +2,7 @@ use std::{collections::HashMap, rc::Rc, ffi::CString};
 use glam::{vec3, Mat4, Quat, Vec3};
 use russimp::{bone::{Bone, VertexWeight}, mesh::Mesh, node::Node, property::PropertyStore, scene::{PostProcess, Scene}};
 
-use crate::{convert_russimp_mat_to_glam_mat, cstr, Model, Shader, SkeletalMesh};
+use crate::{convert_russimp_mat_to_glam_mat, cstr, lerp, Model, Shader, SkeletalMesh};
 
 use super::skeletal_mesh;
 
@@ -172,7 +172,7 @@ impl aBone {
 }
 
 #[derive(Default, Clone)]
-struct RussimpNodeData {
+pub struct RussimpNodeData {
     pub transformation: Mat4,
     pub name: String,
     pub children_count: i32,
@@ -192,12 +192,46 @@ pub struct Animation {
     pub bone_map: HashMap<String, BoneInfo>,
 }
 
+impl Clone for BoneInfo {
+    fn clone(&self) -> Self {
+        let weights = self.bone.weights.iter().map(|w| {
+            VertexWeight {
+                weight: w.weight,
+                vertex_id: w.vertex_id,
+            }
+        }).collect::<Vec<VertexWeight>>();
+
+        let cloned_bone = Bone {
+            weights: weights,
+            name: self.bone.name.clone(),
+            offset_matrix: self.bone.offset_matrix,
+        };
+        Self { 
+            bone: cloned_bone, 
+            id: self.id.clone() 
+        }
+    }
+}
+
+impl Clone for Animation {
+    fn clone(&self) -> Self {
+        
+        Self { 
+            duration: self.duration.clone(), 
+            ticks_per_second: self.ticks_per_second.clone(), 
+            bones: self.bones.clone(), root_node: 
+            self.root_node.clone(), 
+            bone_map: self.bone_map.clone() 
+        }
+    }
+}
+
 impl Animation {
-    pub fn new(scene: Scene) -> Self {
+    pub fn new(scene: &Scene) -> Self {
         let russimp_animation = &scene.animations[0];
 
         let mut root_node = RussimpNodeData::default();
-        Self::read_hierarchy_data(&mut root_node, scene.root.expect("Scene has no root node"));
+        Self::read_hierarchy_data(&mut root_node, scene.root.clone().expect("Scene has no root node"));
 
         let mut animation = Self {
             duration: russimp_animation.duration as f32,
@@ -229,7 +263,7 @@ impl Animation {
                 name: r_bone.name.clone(), 
                 offset_matrix: r_bone.offset_matrix, 
             };
-            self.bone_map.insert(bone.name.clone(), BoneInfo { bone, id });
+            self.bone_map.insert(bone.name.clone(), BoneInfo {bone, id});
         }
 
         for i in 0..size {
@@ -253,12 +287,16 @@ impl Animation {
     }
 }
 
+
 pub struct Animator {
     pub final_bone_matrices: Vec<Mat4>,
     pub current_animation: Animation,
+    pub target_animation: Option<Animation>,
     pub current_time: f32,
-    pub delta_time: f32,
+    pub blend_duration: f32,
+    pub blend_progress: f32,
 }
+
 
 impl Animator {
     pub fn new(animation: Animation) -> Self {
@@ -267,67 +305,92 @@ impl Animator {
         Self {
             current_time: 0.0,
             current_animation: animation,
+            target_animation: None,
             final_bone_matrices,
-            delta_time: 0.0,
+            blend_duration: 0.0,
+            blend_progress: 0.0,
         }
     }
 
-    pub fn update_animation(&mut self, dt: f32) {
-        self.delta_time = dt;
-
+    pub fn update(&mut self, dt: f32) {
         self.current_time += self.current_animation.ticks_per_second as f32 * dt;
-        // self.current_time = self.current_time - (self.current_time / self.current_animation.duration).floor() * self.current_animation.duration;
-        self.current_time %= self.current_animation.duration;
-
-        let root = self.current_animation.root_node.clone();
-        self.calculate_bone_transform(&root, Mat4::IDENTITY);
+        self.current_time = self.current_time - (self.current_time / self.current_animation.duration).floor() * self.current_animation.duration;
+    
+        if let Some(target_animation) = &mut self.target_animation.clone() {
+            let min_duration = self.current_animation.duration.min(target_animation.duration);
+            self.current_time = self.current_time - (self.current_time / min_duration).floor() * min_duration;
+            self.blend_progress += dt / self.blend_duration;
+            if self.blend_progress >= 1.0 {
+                self.current_animation = target_animation.clone();
+                self.target_animation = None;
+                self.blend_progress = 0.0;
+            } else {
+                let root = self.current_animation.root_node.clone();
+                self.interpolate_bone_transforms(&root, Mat4::IDENTITY, target_animation);
+            }
+        } else {
+            let root = self.current_animation.root_node.clone();
+            self.calculate_bone_transform(&root, Mat4::IDENTITY);
+        }
     }
 
     fn calculate_bone_transform(&mut self, node: &RussimpNodeData, parent_transform: Mat4) {
         let mut node_transform = node.transformation;
-
+    
         if let Some(bone) = self.current_animation.find_bone(&node.name) {
             bone.update(self.current_time);
             node_transform = bone.local_transform;
         }
-
+        
         let global_transform = parent_transform * node_transform;
-
+    
         if let Some(bone_info) = self.current_animation.bone_map.get(&node.name) {
             let index = bone_info.id;
             if index < 100 {
-                self.final_bone_matrices[index] = global_transform * convert_russimp_mat_to_glam_mat(bone_info.bone.offset_matrix) * 0.000001;
+                self.final_bone_matrices[index] =
+                    global_transform * convert_russimp_mat_to_glam_mat(bone_info.bone.offset_matrix);
             }
         }
-
+    
         for child in &node.children {
             self.calculate_bone_transform(child, global_transform);
         }
     }
-    
-    /* 
-    fn calculate_bone_transform(&mut self, node: &RussimpNodeData, parent_transform: glam::Mat4) {
+
+    fn interpolate_bone_transforms(&mut self, node: &RussimpNodeData, parent_transform: Mat4, target_animation: &mut Animation) {
         let mut node_transform = node.transformation;
     
-        if let Some(bone) = self.current_animation.find_bone(&node.name) {
+        if let Some(bone) = &mut self.current_animation.find_bone(&node.name) {
             bone.update(self.current_time);
-            node_transform = bone.local_transform;
+            let current_transform = bone.local_transform;
+            if let Some(target_bone) = &mut target_animation.find_bone(&node.name) {
+                target_bone.update(self.current_time);
+                let target_transform = target_bone.local_transform;
+                node_transform = lerp_mat4(current_transform, target_transform, self.blend_progress);
+            }
         }
+        
+        let global_transform = parent_transform * node_transform;
     
-        let global_transformation = parent_transform * node_transform;
-    
-        if let Some(bone_info) = self.current_animation.find_bone(&node.name) {
-            let index = bone_info.id as usize;
+        if let Some(bone_info) = self.current_animation.bone_map.get(&node.name) {
+            let index = bone_info.id;
             if index < 100 {
-                self.final_bone_matrices[index] = global_transformation * node_transform;
+                self.final_bone_matrices[index] =
+                    global_transform * convert_russimp_mat_to_glam_mat(bone_info.bone.offset_matrix);
             }
         }
     
         for child in &node.children {
-            self.calculate_bone_transform(child, global_transformation);
+            self.interpolate_bone_transforms(child, global_transform, target_animation);
         }
     }
-    */
+
+    pub fn start_transition(&mut self, target_animation: Animation, blend_duration: f32) {
+        self.target_animation = Some(target_animation);
+        self.blend_duration = blend_duration;
+        self.blend_progress = 0.0;
+    }
+
     pub fn upload_uniforms(&self, shader: &Shader) {
         for (i, matrix) in self.final_bone_matrices.iter().enumerate() {
             unsafe {
@@ -338,4 +401,15 @@ impl Animator {
             }
         }
     }
+}
+
+fn lerp_mat4(lhs: Mat4, rhs: Mat4, t: f32) -> Mat4 {
+    let (s, r, tr) = lhs.to_scale_rotation_translation();
+    let (gs, gr, gtr) = rhs.to_scale_rotation_translation();
+
+    let translation = tr.lerp(gtr, t);
+    let rotation = r.slerp(gr, t);
+    let scale = s.lerp(gs, t);
+
+    Mat4::from_scale_rotation_translation(scale, rotation, translation)
 }

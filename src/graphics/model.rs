@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, collections::HashMap, hash::Hash, ops::{Index, IndexMut}, path::Path};
 
 use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3, Vec4};
-use russimp::{bone::{Bone, VertexWeight}, mesh::Mesh as rMesh, property::{Property, PropertyStore}, scene::{PostProcess, Scene}, Matrix4x4};
+use russimp::{bone::Bone, scene::{PostProcess, Scene}, Matrix4x4};
 use tobj::LoadOptions;
 use gl::types::GLuint;
 
@@ -31,8 +31,6 @@ impl IndexMut<ModelHandle> for HashMap<ModelHandle, Model> {
 pub struct Model {
     pub meshes: Vec<Mesh>,
     pub loaded_textures: Vec<GLuint>,
-
-    bone_counter: i32,
 }
 
 impl Model {
@@ -47,7 +45,6 @@ impl Model {
         Self {
             meshes: vec![],
             loaded_textures: vec![],
-            bone_counter: 0,
         }
     }
 
@@ -124,9 +121,7 @@ impl Model {
         }
     }
 
-    /* TODO: function that takes in an empty mesh and loads its vertex data with russimp as well as bones accordingly */
-
-    pub fn load_skeletal<'t>(scene: &Scene) -> SkeletalMesh {
+    pub fn load_skeletal(scene: &Scene) -> SkeletalMesh {
         let russimp_mesh = &scene.meshes[0];
         
         let positions = russimp_mesh.vertices.iter().map(|v| {
@@ -228,7 +223,6 @@ impl Renderer {
     }
 }
 
-// idk if this is necessary since texture already implements drop (as well as mesh)
 impl Drop for Model {
     fn drop(&mut self) {
         for texture_id in self.loaded_textures.iter() {

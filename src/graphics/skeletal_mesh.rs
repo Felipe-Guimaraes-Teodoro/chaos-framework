@@ -2,9 +2,8 @@ use std::mem::size_of;
 
 use glam::{Vec2, Vec3};
 
-use gl::{*, types::*};
+use gl::*;
 
-use crate::graphics::vertex;
 use crate::{bind_buffer, gen_attrib_pointers, Mesh, RUSSIMP_SHADER};
 
 pub const MAX_BONE_INFLUENCE: usize = 4;
@@ -34,14 +33,14 @@ impl Default for SkeletalVertex {
     }
 }
 
-use crate::{cstr, Renderer, Shader, TextureHandle, Vertex, DEFAULT_SHADER};
+use crate::{cstr, Renderer, Shader, TextureHandle};
 
 use std::ops::{Index, IndexMut};
 use std::{collections::HashMap, ptr};
 
 use std::ffi::CString;
 
-use gl::{*, types::GLsizei};
+use gl::types::GLsizei;
 use glam::{Mat4, Quat};
 
 #[derive(PartialEq, Debug, Clone)]
@@ -64,11 +63,6 @@ pub struct SkeletalMesh {
     pub children: Vec<Box<Mesh>>,
 
     pub has_been_set_up: bool,
-}
-
-pub struct MeshData {
-    pub vertices: Vec<Vertex>,
-    pub indices: Vec<u32>,
 }
 
 impl SkeletalMesh {

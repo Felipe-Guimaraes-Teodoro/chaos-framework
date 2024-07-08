@@ -1,10 +1,8 @@
 use std::{collections::HashMap, rc::Rc, ffi::CString};
 use glam::{vec3, Mat4, Quat, Vec3};
-use russimp::{bone::{Bone, VertexWeight}, mesh::Mesh, node::Node, property::PropertyStore, scene::{PostProcess, Scene}};
+use russimp::{bone::{Bone, VertexWeight}, mesh::Mesh, node::Node, scene::Scene};
 
-use crate::{convert_russimp_mat_to_glam_mat, cstr, lerp, Model, Shader, SkeletalMesh};
-
-use super::skeletal_mesh;
+use crate::{convert_russimp_mat_to_glam_mat, cstr, Shader};
 
 #[derive(Copy, Clone)]
 struct KeyPosition {
@@ -25,7 +23,7 @@ struct KeyScale {
 }
 
 #[derive(Clone)]
-struct aBone {
+pub struct AnimationBone {
     positions: Vec<KeyPosition>,
     rotations: Vec<KeyRotation>,
     scalings: Vec<KeyScale>,
@@ -34,11 +32,11 @@ struct aBone {
     num_scalings: usize,
 
     local_transform: Mat4,
-    id: i32,
+    _id: i32,
     name: String,
 }
 
-impl aBone {
+impl AnimationBone {
     pub fn new(name: &str, id: i32, channel: &russimp::animation::NodeAnim) -> Self {
         let mut positions = vec![];
         let num_positions = channel.position_keys.len();
@@ -71,7 +69,7 @@ impl aBone {
             scalings.push(KeyScale { scale: sca, timestamp });
         }
 
-        aBone {
+        AnimationBone {
             positions,
             rotations,
             scalings,
@@ -80,7 +78,7 @@ impl aBone {
             num_scalings,
             local_transform: Mat4::IDENTITY,
             name: name.to_string(),
-            id,
+            _id: id,
         }
     }
 
@@ -179,7 +177,7 @@ pub struct RussimpNodeData {
     pub children: Vec<Self>,
 }
 
-struct BoneInfo {
+pub struct BoneInfo {
     bone: Bone,
     id: usize,
 }
@@ -187,7 +185,7 @@ struct BoneInfo {
 pub struct Animation {
     pub duration: f32,
     pub ticks_per_second: i32,
-    pub bones: Vec<aBone>,
+    pub bones: Vec<AnimationBone>,
     pub root_node: RussimpNodeData,
     pub bone_map: HashMap<String, BoneInfo>,
 }
@@ -246,7 +244,7 @@ impl Animation {
         animation
     }
 
-    fn find_bone(&mut self, name: &str) -> Option<&mut aBone> {
+    fn find_bone(&mut self, name: &str) -> Option<&mut AnimationBone> {
         self.bones.iter_mut().find(|bone| bone.name == name)
     }
 
@@ -270,7 +268,7 @@ impl Animation {
             let channel = &animation.channels[i];
             let bone_name = channel.name.clone();
 
-            self.bones.push(aBone::new(&bone_name, i as i32, channel));
+            self.bones.push(AnimationBone::new(&bone_name, i as i32, channel));
         }
     }
 

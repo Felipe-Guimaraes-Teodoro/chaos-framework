@@ -1,4 +1,4 @@
-use crate::{bind_buffer, cstr, gen_attrib_pointers, Renderer, Shader, SkeletalVertex, TextureHandle, Vertex, DEFAULT_SHADER};
+use crate::{bind_buffer, cstr, gen_attrib_pointers, Renderer, Shader, TextureHandle, Vertex, DEFAULT_SHADER};
 
 use std::ops::{Index, IndexMut};
 use std::{collections::HashMap, ptr};

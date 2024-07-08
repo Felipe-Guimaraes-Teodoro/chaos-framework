@@ -4,8 +4,6 @@ use gl::{UseProgram, types::GLuint};
 
 use crate::{Camera, Light, LightHandle, Mesh, MeshHandle, Model, ModelHandle, SkeletalMesh, SkeletalMeshHandle, TextureHandle, DEFAULT_SHADER, RUSSIMP_SHADER};
 
-use super::skeletal_mesh;
-
 pub struct Renderer {
     pub meshes: HashMap<MeshHandle, Mesh>,
     pub lights: HashMap<LightHandle, Light>,
@@ -13,6 +11,9 @@ pub struct Renderer {
     pub models: HashMap<ModelHandle, Model>,
     pub skeletal_meshes: HashMap<SkeletalMeshHandle, SkeletalMesh>,
     pub camera: Camera,
+
+    /* worker_thread */ // todo: a thread for computing uniforms in parallel on an update method to reduce overhead
+    // i really wanna add other parallel stuff on other parts of the framework too
 } 
 
 impl Renderer {

@@ -8,6 +8,9 @@ pub struct EventHandler {
     pub keys_pressed: HashMap<Key, usize>,
     pub keys_pressed_last_frame: HashSet<Key>,
 
+    pub keys_released: HashMap<Key, usize>,
+    pub keys_released_last_frame: HashSet<Key>,
+
     pub mouse_pos: Vec2,
     pub scroll: Vec2,
 
@@ -22,6 +25,9 @@ impl EventHandler {
         Self { 
             keys_pressed: HashMap::new(),
             keys_pressed_last_frame: HashSet::new(),
+
+            keys_released: HashMap::new(),
+            keys_released_last_frame: HashSet::new(),
             
             mouse_pos: Vec2::ONE,
 
@@ -36,12 +42,17 @@ impl EventHandler {
     }
 
     pub fn on_key_press(&mut self, key: Key) {
+        self.keys_released.remove(&key);
+
         let key_handle = self.keys_pressed.len();
         self.keys_pressed.insert(key, key_handle);
     }
 
     pub fn on_key_release(&mut self, key: Key) {
         self.keys_pressed.remove(&key);
+
+        let key_handle = self.keys_released.len();
+        self.keys_released.insert(key, key_handle);
     }
 
     pub fn on_mouse_move(&mut self, x: f64, y: f64) {
@@ -74,13 +85,22 @@ impl EventHandler {
 
     pub fn update(&mut self) {
         self.keys_pressed_last_frame.clear();
+        self.keys_released_last_frame.clear();
+
         self.scroll = Vec2::ZERO;
         for &key in self.keys_pressed.keys() {
             self.keys_pressed_last_frame.insert(key);
+        }
+
+        for &key in self.keys_released.keys() {
+            self.keys_released_last_frame.insert(key);
         }
     }
 
     pub fn key_just_pressed(&self, key: Key) -> bool {
         self.keys_pressed.contains_key(&key) && !self.keys_pressed_last_frame.contains(&key)
+    }
+    pub fn key_just_released(&self, key: Key) -> bool {
+        self.keys_released.contains_key(&key) && !self.keys_released_last_frame.contains(&key)
     }
 }

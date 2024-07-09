@@ -11,8 +11,8 @@ It currently supports basic graphics with OpenGL and glfw for windowing. It also
   * Skeletal animation
 
 ## Plans for the future
-Near future: instancing; particles; parallelization; late latching; skybox (atmosphere shader and cubemaps); sound; make it faster; improve the lightning systems; abstract OpenGL even more
-Not-so-near future: Vulkan instead of OpenGL; support for Web (Might use WGPU); sound synthesizer engine; 
+ * Near future: instancing; particles; parallelization; late latching; skybox (atmosphere shader and cubemaps); sound; make it faster; improve the lightning systems; abstract OpenGL even more
+ * Not-so-near future: Vulkan instead of OpenGL; support for Web (Might use WGPU); sound synthesizer engine; 
 
 ## Simple 2D example code (see in examples folder):
 ```rs

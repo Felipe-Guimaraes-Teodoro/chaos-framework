@@ -27,7 +27,7 @@ impl Renderer {
         }
     }
 
-    pub async fn update(&mut self) {
+    pub fn update(&mut self) {
         for mesh in self.meshes.values_mut() {
             if mesh.has_been_set_up == false {
                 mesh.setup_mesh();

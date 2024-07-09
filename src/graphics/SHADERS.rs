@@ -1,5 +1,5 @@
 
-pub static DEFAULT_SHADER_VS: &str = r#"
+pub static DEFAULT_VS: &str = r#"
 #version 330 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec4 aColor;
@@ -25,7 +25,7 @@ void main() {
 }
 "#;
 
-pub static DEFAULT_SHADER_FS: &str = r#"
+pub static DEFAULT_FS: &str = r#"
 #version 330 core
 out vec4 FragColor;
 
@@ -133,9 +133,9 @@ use once_cell::sync::Lazy;
 use crate::Shader;
 
 pub static DEFAULT_SHADER: Lazy<Shader> = Lazy::new(|| {
-    Shader::new_pipeline(DEFAULT_SHADER_VS, DEFAULT_SHADER_FS)
+    Shader::new_pipeline(DEFAULT_VS, DEFAULT_FS)
 });
 
 pub static RUSSIMP_SHADER: Lazy<Shader> = Lazy::new(|| {
-    Shader::new_pipeline(RUSSIMP_VS, DEFAULT_SHADER_FS)
+    Shader::new_pipeline(RUSSIMP_VS, DEFAULT_FS)
 });

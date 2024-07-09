@@ -1,4 +1,3 @@
-use gl::UseProgram;
 use glam::Vec3;
 
 use std::{collections::HashMap, ffi::CString, ops::{Index, IndexMut}};
@@ -30,18 +29,18 @@ impl IndexMut<LightHandle> for HashMap<LightHandle, Light> {
 }
 
 impl Renderer {
+    // i'm assuming shader.use_shader() has been called
     pub unsafe fn send_light_uniforms(&self, shader: &Shader) {
-        shader.use_shader();
         shader.uniform_vec3f(cstr!("viewPos"), &self.camera.pos);
         shader.uniform_1i(cstr!("num_lights"), self.lights.len() as i32);
         let mut i = 0;
+
         for light in self.lights.values() {
             shader.uniform_vec3f(cstr!(format!("lightColor[{}]", i)), &light.color);
             shader.uniform_vec3f(cstr!(format!("lightPos[{}]", i)), &light.position);
 
             i+=1;
         }
-        UseProgram(0);
     }
 
     pub fn add_light(&mut self, light: Light) -> Option<LightHandle> {

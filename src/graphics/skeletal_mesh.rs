@@ -63,6 +63,7 @@ pub struct SkeletalMesh {
     pub children: Vec<Box<Mesh>>,
 
     pub has_been_set_up: bool,
+    pub hidden: bool,
 }
 
 impl SkeletalMesh {
@@ -79,6 +80,7 @@ impl SkeletalMesh {
             parent: None,
             children: Vec::new(),
             has_been_set_up: false,
+            hidden: false,
         };
 
         mesh
@@ -157,35 +159,39 @@ impl SkeletalMesh {
     }
 
 
-    pub unsafe fn setup_mesh(&mut self) {
-        let size = size_of::<SkeletalVertex>() as GLsizei;            
-        GenVertexArrays(1, &mut self.vao);
-        GenBuffers(1, &mut self.vbo);
-        GenBuffers(1, &mut self.ebo);
-
-        BindVertexArray(self.vao);
-
-        bind_buffer!(ARRAY_BUFFER, self.vbo, self.vertices);
-        bind_buffer!(ELEMENT_ARRAY_BUFFER, self.ebo, self.indices);
-        gen_attrib_pointers!(SkeletalVertex, 0 => position: 3, 1 => normal: 3, 2 => tex_coords: 2);
-        // now generate the other attrib pointers 
-
-        // ids
-        EnableVertexAttribArray(3);
-        let offset_bone = &((*std::ptr::null::<SkeletalVertex>()).bone_ids) as *const _ as *const std::ffi::c_void;
-        VertexAttribIPointer(3, 4, INT, size, offset_bone);
-
-        // weights (we could generate this using the macro, but i prefer this)
-        EnableVertexAttribArray(4);
-        let offset_weight = &((*std::ptr::null::<SkeletalVertex>()).weights) as *const _ as *const std::ffi::c_void;
-        VertexAttribPointer(4, 4, FLOAT, FALSE, size, offset_weight);
-
-        gl::BindTexture(gl::TEXTURE_2D, self.texture);
-
-        BindVertexArray(0);
+    pub fn setup_mesh(&mut self) {
+        unsafe {
+            let size = size_of::<SkeletalVertex>() as GLsizei;            
+            GenVertexArrays(1, &mut self.vao);
+            GenBuffers(1, &mut self.vbo);
+            GenBuffers(1, &mut self.ebo);
+    
+            BindVertexArray(self.vao);
+    
+            bind_buffer!(ARRAY_BUFFER, self.vbo, self.vertices);
+            bind_buffer!(ELEMENT_ARRAY_BUFFER, self.ebo, self.indices);
+            gen_attrib_pointers!(SkeletalVertex, 0 => position: 3, 1 => normal: 3, 2 => tex_coords: 2);
+            // now generate the other attrib pointers 
+    
+            // ids
+            EnableVertexAttribArray(3);
+            let offset_bone = &((*std::ptr::null::<SkeletalVertex>()).bone_ids) as *const _ as *const std::ffi::c_void;
+            VertexAttribIPointer(3, 4, INT, size, offset_bone);
+    
+            // weights (we could generate this using the macro, but i prefer this)
+            EnableVertexAttribArray(4);
+            let offset_weight = &((*std::ptr::null::<SkeletalVertex>()).weights) as *const _ as *const std::ffi::c_void;
+            VertexAttribPointer(4, 4, FLOAT, FALSE, size, offset_weight);
+    
+            gl::BindTexture(gl::TEXTURE_2D, self.texture);
+    
+            BindVertexArray(0);
+        }
     }
     
-    pub unsafe fn draw(&self) {
+    pub unsafe fn draw(&self, renderer: &Renderer) {
+        if self.hidden { return; }
+
         let model_matrix = 
             Mat4::from_translation(self.position) *
             Mat4::from_quat(self.rotation) *
@@ -204,16 +210,19 @@ impl SkeletalMesh {
             }
         }
         
+        BindTexture(TEXTURE_2D, self.texture);
 
         // Set uniforms and draw
+        self.shader.use_shader();
         self.shader.uniform_mat4fv(cstr!("model"), &model_matrix.to_cols_array());
         self.shader.uniform_vec3f(cstr!("pos"), &self.position);
         self.shader.uniform_vec3f(cstr!("color"), &self.color);
+        renderer.send_light_uniforms(&self.shader);
+        renderer.camera.send_uniforms(&self.shader);
         
-        BindTexture(TEXTURE_2D, self.texture);
-
         DrawElements(TRIANGLES, self.indices.len() as i32, UNSIGNED_INT, ptr::null());
-
+        
+        UseProgram(0);
         BindVertexArray(0);
         UseProgram(0);
     }

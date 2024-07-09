@@ -7,7 +7,6 @@ use gl::types::GLuint;
 
 use crate::{Mesh, Renderer, SkeletalMesh, SkeletalVertex, Texture, Vertex, MAX_BONE_INFLUENCE};
 
-
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 pub struct ModelHandle {
     pub id: usize,
@@ -115,9 +114,9 @@ impl Model {
         texture
     }
 
-    pub unsafe fn draw(&self) {
+    pub unsafe fn draw(&self, renderer: &Renderer) {
         for mesh in &self.meshes {
-            mesh.draw();
+            mesh.draw(renderer);
         }
     }
 

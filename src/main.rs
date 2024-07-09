@@ -30,7 +30,6 @@ fn main() {
         }).unwrap();
     }
 
-
     el.window.set_cursor_mode(CursorMode::Disabled);
     // el.window.glfw.set_swap_interval(SwapInterval::Sync(0));
 
@@ -85,6 +84,8 @@ fn main() {
 
     while !el.window.should_close() {
         el.update();
+        renderer.update();
+
         if el.is_key_down(Key::A) || el.is_key_down(Key::W) || el.is_key_down(Key::S) || el.is_key_down(Key::D) {
             if el.is_key_down(Key::LeftShift) {
                 speed = lerp(speed, 10.0, 0.03);

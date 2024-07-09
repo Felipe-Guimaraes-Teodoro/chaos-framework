@@ -146,7 +146,7 @@ impl Mesh {
         }
     }
     
-    pub unsafe fn draw(&self) {
+    pub unsafe fn draw(&self, renderer: &Renderer) {
         if self.hidden { return; }
 
         let model_matrix = 
@@ -166,16 +166,18 @@ impl Mesh {
                 self.shader.uniform_1i(cstr!("has_texture"), 0);
             }
         }
+        
+        BindTexture(TEXTURE_2D, self.texture);
 
         // Set uniforms and draw
         self.shader.uniform_mat4fv(cstr!("model"), &model_matrix.to_cols_array());
         self.shader.uniform_vec3f(cstr!("pos"), &self.position);
         self.shader.uniform_vec3f(cstr!("color"), &self.color);
+        renderer.send_light_uniforms(&self.shader);
+        renderer.camera.send_uniforms(&self.shader);
         
-        BindTexture(TEXTURE_2D, self.texture);
-
         DrawElements(TRIANGLES, self.indices.len() as i32, UNSIGNED_INT, ptr::null());
-
+        
         BindVertexArray(0);
         UseProgram(0);
     }

@@ -1,6 +1,7 @@
 # Chaos Framework (WIP)
 
 ## What is it?
+The sucessor of Tiny Game Framework.
 It's a framework which aims to have the capabilities of creating cool games while still easy to use.
 
 It currently supports basic graphics with OpenGL and glfw for windowing. It also has Imgui built-in and uses tobj and assimp for the loading of models.

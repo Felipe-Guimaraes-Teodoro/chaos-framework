@@ -28,6 +28,7 @@ pub struct Mesh {
     pub children: Vec<Box<Mesh>>,
 
     pub has_been_set_up: bool,
+    pub hidden: bool,
 }
 
 pub struct MeshData {
@@ -49,6 +50,7 @@ impl Mesh {
             parent: None,
             children: Vec::new(),
             has_been_set_up: false,
+            hidden: false,
         };
 
         mesh
@@ -145,6 +147,8 @@ impl Mesh {
     }
     
     pub unsafe fn draw(&self) {
+        if self.hidden { return; }
+
         let model_matrix = 
             Mat4::from_translation(self.position) *
             Mat4::from_quat(self.rotation) *
@@ -162,7 +166,6 @@ impl Mesh {
                 self.shader.uniform_1i(cstr!("has_texture"), 0);
             }
         }
-        
 
         // Set uniforms and draw
         self.shader.uniform_mat4fv(cstr!("model"), &model_matrix.to_cols_array());

@@ -2,6 +2,14 @@
 name = "chaos-framework"
 version = "0.1.0"
 edition = "2021"
+authors = ["Felipe <felipeguimaraesteodoro@gmail.com>", "Caio <ferrandis.ca@gmail.com>", "Bob <bob@example.com>"]
+license = "MIT OR Apache-2.0"
+keywords = ["gamedev", "graphics", "glfw", "opengl"]
+description = "Game framework for creating games!"
+repository = "https://github.com/Felipe-Guimaraes-Teodoro/chaos-framework"
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 gl = "0.14.0"

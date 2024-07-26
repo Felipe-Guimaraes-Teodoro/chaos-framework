@@ -1,9 +1,6 @@
 /*
 An example for a simple 2D game using an orthographic camera
 */
-
-use std::{borrow::BorrowMut, ops::{Deref, DerefMut}, rc::Rc};
-
 use chaos_framework::*;
 use glfw::Key;
 
@@ -27,7 +24,7 @@ fn main() {
     renderer.meshes[player_handle].position = Vec3::Z * 2.0; // so the player stays in front of everything
 
     let mut segments = vec![];
-    for i in 0..64 {
+    for _ in 0..128 {
         let new_segment = Segment::new(vec3(0.0, 0.0, 0.0), 0.05, &mut renderer);
 
         segments.push(new_segment);
@@ -41,12 +38,13 @@ fn main() {
 
     segments[0].pos = Vec3::new(-2.0, -2.0, 0.0);
 
-    let mut clamped_pos = Vec3::ZERO;
-    let mut player_vel = Vec3::ZERO;
+    let mut clamped_pos;
+    let mut player_vel;
     let mut old_pos = Vec3::ZERO;
 
     while !el.window.should_close() {
         el.update();
+        renderer.update();
         
         segments.iter_mut().for_each(|s| {
             s.update(&mut renderer);
@@ -66,7 +64,7 @@ fn main() {
             } else {
                 clamped_player_pos
             }
-        }, 0.0, 16);
+        }, 0.0, 2);
 
         let first_segment_position = segments[0].pos;
         let seg_amm = segments.len() as f32;
@@ -140,7 +138,7 @@ impl Segment {
 }
 
 fn fabrik(segments: &mut [Segment], target: Vec3, tolerance: f32, max_iterations: usize) {
-    let mut b = segments[0].pos;
+    let b = segments[0].pos;
     let mut diff = (segments.last().unwrap().get_end() - target).length();
     let mut iterations = 0;
 

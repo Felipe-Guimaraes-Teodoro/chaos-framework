@@ -1,6 +1,6 @@
 [package]
 name = "chaos-framework"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Felipe <felipeguimaraesteodoro@gmail.com>", "Caio <ferrandis.ca@gmail.com>", "Bob <bob@example.com>"]
 license = "MIT OR Apache-2.0"
@@ -17,9 +17,6 @@ glam = "0.28.0"
 glfw = "0.57.0"
 image = "0.25.1"
 imgui = "0.12.0"
-once_cell = "1.19.0"
 rand = "0.8.5"
 russimp = {version = "3.2.0", features = ["prebuilt"]}
 tobj = "4.0.2"
-
-[features]

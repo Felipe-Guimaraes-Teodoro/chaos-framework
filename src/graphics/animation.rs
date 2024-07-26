@@ -102,7 +102,7 @@ impl AnimationBone {
                 return i;
             }
         }
-        0 // things got fucked up
+        0
     }
 
     fn get_rotation_index(&self, animation_time: f32) -> usize {
@@ -111,7 +111,7 @@ impl AnimationBone {
                 return i;
             }
         }
-        0 // things got fucked up (rotation edition)
+        0
     }
 
     fn get_scale_index(&self, animation_time: f32) -> usize {
@@ -120,7 +120,7 @@ impl AnimationBone {
                 return i;
             }
         }
-        0 // yeah
+        0
     }
 
     fn interpolate_position(&self, animation_time: f32) -> Mat4 {

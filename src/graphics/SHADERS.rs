@@ -128,14 +128,16 @@ void main()
 
 "#;
 
-use once_cell::sync::Lazy;
-
 use crate::Shader;
 
-pub static DEFAULT_SHADER: Lazy<Shader> = Lazy::new(|| {
+use std::sync::LazyLock;
+
+pub static DEFAULT_SHADER: LazyLock<Shader> = LazyLock::new(|| {
     Shader::new_pipeline(DEFAULT_VS, DEFAULT_FS)
 });
 
-pub static RUSSIMP_SHADER: Lazy<Shader> = Lazy::new(|| {
+
+pub static RUSSIMP_SHADER: LazyLock<Shader> = LazyLock::new(|| {
     Shader::new_pipeline(RUSSIMP_VS, DEFAULT_FS)
 });
+

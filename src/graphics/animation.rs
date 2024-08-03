@@ -1,7 +1,10 @@
+
 use std::{collections::HashMap, rc::Rc, ffi::CString};
 use glam::{vec3, Mat4, Quat, Vec3};
+#[cfg(feature = "skeletal")]
 use russimp::{bone::{Bone, VertexWeight}, mesh::Mesh, node::Node, scene::Scene};
 
+#[cfg(feature = "skeletal")]
 use crate::{convert_russimp_mat_to_glam_mat, cstr, Shader};
 
 #[derive(Copy, Clone)]
@@ -36,6 +39,7 @@ pub struct AnimationBone {
     name: String,
 }
 
+#[cfg(feature = "skeletal")]
 impl AnimationBone {
     pub fn new(name: &str, id: i32, channel: &russimp::animation::NodeAnim) -> Self {
         let mut positions = vec![];
@@ -177,11 +181,13 @@ pub struct RussimpNodeData {
     pub children: Vec<Self>,
 }
 
+#[cfg(feature = "skeletal")]
 pub struct BoneInfo {
     bone: Bone,
     id: usize,
 }
 
+#[cfg(feature = "skeletal")]
 pub struct Animation {
     pub duration: f32,
     pub ticks_per_second: i32,
@@ -190,6 +196,7 @@ pub struct Animation {
     pub bone_map: HashMap<String, BoneInfo>,
 }
 
+#[cfg(feature = "skeletal")]
 impl Clone for BoneInfo {
     fn clone(&self) -> Self {
         let weights = self.bone.weights.iter().map(|w| {
@@ -211,6 +218,7 @@ impl Clone for BoneInfo {
     }
 }
 
+#[cfg(feature = "skeletal")]
 impl Clone for Animation {
     fn clone(&self) -> Self {
         
@@ -224,6 +232,7 @@ impl Clone for Animation {
     }
 }
 
+#[cfg(feature = "skeletal")]
 impl Animation {
     pub fn new(scene: &Scene) -> Self {
         let russimp_animation = &scene.animations[0];
@@ -286,6 +295,7 @@ impl Animation {
 }
 
 
+#[cfg(feature = "skeletal")]
 pub struct Animator {
     pub final_bone_matrices: Vec<Mat4>,
     pub current_animation: Animation,
@@ -296,6 +306,7 @@ pub struct Animator {
 }
 
 
+#[cfg(feature = "skeletal")]
 impl Animator {
     pub fn new(animation: Animation) -> Self {
         let final_bone_matrices = vec![Mat4::IDENTITY; 100];

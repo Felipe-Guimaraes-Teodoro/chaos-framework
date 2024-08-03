@@ -1,6 +1,6 @@
 [package]
 name = "chaos-framework"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Felipe <felipeguimaraesteodoro@gmail.com>", "Caio <ferrandis.ca@gmail.com>", "Bob <bob@example.com>"]
 license = "MIT OR Apache-2.0"
@@ -18,5 +18,8 @@ glfw = "0.57.0"
 image = "0.25.1"
 imgui = "0.12.0"
 rand = "0.8.5"
-russimp = {version = "3.2.0", features = ["prebuilt"]}
+russimp = {version = "3.2.0", features = ["prebuilt"], optional = true}
 tobj = "4.0.2"
+
+[features]
+skeletal = ["dep:russimp"]

@@ -1,6 +1,7 @@
 use std::{cmp::Ordering, collections::HashMap, hash::Hash, ops::{Index, IndexMut}, path::Path};
 
 use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3, Vec4};
+#[cfg(feature = "skeletal")]
 use russimp::{bone::Bone, scene::{PostProcess, Scene}, Matrix4x4};
 use tobj::LoadOptions;
 use gl::types::GLuint;
@@ -120,6 +121,7 @@ impl Model {
         }
     }
 
+    #[cfg(feature = "skeletal")]
     pub fn load_skeletal(scene: &Scene) -> SkeletalMesh {
         let russimp_mesh = &scene.meshes[0];
         
@@ -158,6 +160,7 @@ impl Model {
         SkeletalMesh::new(&vertices, &indices)
     }
 
+    #[cfg(feature = "skeletal")]
     fn collect_bone_data(bones: &Vec<Bone>) -> (Vec<[i32; MAX_BONE_INFLUENCE]>, Vec<[f32; MAX_BONE_INFLUENCE]>) {
         let num_vertices = bones.iter().flat_map(|bone| bone.weights.iter()).map(|w| w.vertex_id).max().unwrap_or(0) + 1;
     
@@ -185,6 +188,7 @@ impl Model {
     }
 }
 
+#[cfg(feature = "skeletal")]
 pub fn load_scene(path: &str) -> Scene {
     Scene::from_file(
         path, 
@@ -195,6 +199,7 @@ pub fn load_scene(path: &str) -> Scene {
     ).unwrap()
 }
 
+#[cfg(feature = "skeletal")]
 pub fn convert_russimp_mat_to_glam_mat(mat: Matrix4x4) -> Mat4 {
     Mat4::from_cols_array(&[
         mat.a1, mat.b1, mat.c1, mat.d1,

@@ -25,7 +25,7 @@ impl Culler {
         let frustum = Frustum::sample_from_camera(
             &renderer.camera, 
             1.0, 
-            90.0_f32.to_radians(), 
+            70.0_f32.to_radians(), 
             0.1, 
             100.0
         );

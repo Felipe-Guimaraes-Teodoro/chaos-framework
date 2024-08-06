@@ -23,7 +23,7 @@ fn main() {
     // renderer.add_mesh(floor).unwrap();
     let mut culler = Culler::new(&renderer);
 
-    for _ in 0..260 {
+    for _ in 0..1024 {
         let handle = renderer.add_mesh({
             let mut mesh = Cuboid::new(Vec3::ONE, Vec4::ONE).mesh();
             mesh.position = (rand_vec3() * 2.0 - 1.0) * 20.0 + vec3(0.0, 20.0, 0.0);

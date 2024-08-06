@@ -16,13 +16,15 @@ impl Quad{
     }
 
     pub fn mesh(&self) -> Mesh {
+        let half_width = self.size.x / 2.0;
+        let half_height = self.size.y / 2.0;
+        
         let vertices = vec![
-            Vertex::new(vec3(0.0, 0.0, 0.0), self.color, vec2(0.0, 0.0), vec3(0., 0., 1.)),                    // Bottom-left
-            Vertex::new(vec3(0.0, self.size.y, 0.0), self.color, vec2(0.0, 1.0), vec3(0., 0., 1.)),             // Top-left
-            Vertex::new(vec3(self.size.x, 0.0, 0.0), self.color, vec2(1.0, 0.0), vec3(0., 0., 1.)),             // Bottom-right
-            Vertex::new(vec3(self.size.x, self.size.y, 0.0), self.color, vec2(1.0, 1.0), vec3(0., 0., 1.)),      // Top-right
+            Vertex::new(vec3(-half_width, -half_height, 0.0), self.color, vec2(0.0, 0.0), vec3(0., 0., 1.)),   // Bottom-left
+            Vertex::new(vec3(-half_width, half_height, 0.0), self.color, vec2(0.0, 1.0), vec3(0., 0., 1.)),    // Top-left
+            Vertex::new(vec3(half_width, -half_height, 0.0), self.color, vec2(1.0, 0.0), vec3(0., 0., 1.)),    // Bottom-right
+            Vertex::new(vec3(half_width, half_height, 0.0), self.color, vec2(1.0, 1.0), vec3(0., 0., 1.)),     // Top-right
         ];
-
 
         let indices = vec![0, 2, 1, 2, 3, 1];
         

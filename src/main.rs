@@ -6,6 +6,8 @@ use glfw::Key;
 fn main() {
     let mut el = EventLoop::new(800, 600);
     let mut renderer = Renderer::new();
+
+    el.window.glfw.set_swap_interval(SwapInterval::Sync(0));
     
     unsafe {
         Enable(DEPTH_TEST);
@@ -182,5 +184,6 @@ fn main() {
             renderer.draw();
             el.ui.draw();
         }
+
     }
 }

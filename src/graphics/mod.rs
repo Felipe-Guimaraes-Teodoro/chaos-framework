@@ -10,6 +10,7 @@ mod light;
 mod model;
 mod skeletal_mesh;
 mod animation;
+pub mod framebuffer;
 
 pub use model::*;
 pub use light::*;

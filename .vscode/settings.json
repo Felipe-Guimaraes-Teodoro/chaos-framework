@@ -1,5 +1,9 @@
 {
     "[rust]": {
-        "editor.inlayHints.enabled": "off"
-    }
+        "editor.inlayHints.enabled": "off",
+    },
+    "rust-analyzer.cargo.features": ["skeletal"],
+    "rust-analyzer.check.noDefaultFeatures": true,
+    "rust-analyzer.check.features": ["skeletal"],
+    "rust-analyzer.cargo.noDefaultFeatures": true
 }

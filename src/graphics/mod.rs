@@ -10,6 +10,7 @@ mod light;
 mod model;
 mod skeletal_mesh;
 mod animation;
+mod trail;
 
 pub use model::*;
 pub use light::*;
@@ -23,3 +24,4 @@ pub use shader::*;
 pub use skeletal_mesh::*;
 pub use texture::*;
 pub use animation::*;
+pub use trail::*;

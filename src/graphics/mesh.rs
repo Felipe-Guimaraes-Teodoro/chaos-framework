@@ -181,6 +181,34 @@ impl Mesh {
         BindVertexArray(0);
         UseProgram(0);
     }
+
+    pub fn update_data(&mut self, vertices: Vec<Vertex>, indices: Vec<u32>) {
+        self.vertices = vertices;
+        self.indices = indices;
+    
+        unsafe {
+            BindVertexArray(self.vao);
+    
+            BindBuffer(gl::ARRAY_BUFFER, self.vbo);
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (self.vertices.len() * std::mem::size_of::<Vertex>()) as isize,
+                self.vertices.as_ptr() as *const std::ffi::c_void,
+                gl::DYNAMIC_DRAW,
+            );
+    
+            BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ebo);
+            gl::BufferData(
+                gl::ELEMENT_ARRAY_BUFFER,
+                (self.indices.len() * std::mem::size_of::<u32>()) as isize,
+                self.indices.as_ptr() as *const std::ffi::c_void,
+                gl::DYNAMIC_DRAW,
+            );
+    
+            BindVertexArray(0);
+        }
+    }
+    
 }
 
 impl Renderer {

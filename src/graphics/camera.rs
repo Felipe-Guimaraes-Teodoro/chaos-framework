@@ -197,6 +197,9 @@ impl Camera {
         self.direction.z = self.yaw.to_radians().sin() * self.pitch.to_radians().cos();
 
         self.front = self.direction.normalize();
+
+        self.right = Vec3::Y.cross(self.front).normalize();
+        self.up = self.front.cross(self.right).normalize();
     }
 
     // RENDERING //

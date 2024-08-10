@@ -1,6 +1,8 @@
 use glam::{vec3, vec4, Mat4, Vec3, Vec3A, Vec4};
 
-use crate::{Camera, MeshHandle, Renderer};
+use crate::{Camera, EventLoop, MeshHandle, Renderer};
+
+use super::distance;
 
 /*
 A set of utilities to help with culling meshes that are not in the view frustrum of the camera
@@ -21,13 +23,14 @@ impl Culler {
         self.mesh_handles.push(handle);
     }
 
-    pub fn update(&mut self, renderer: &mut Renderer) {
+    pub fn update(&mut self, renderer: &mut Renderer, el: &EventLoop) {
+        let wh = el.size();
         let frustum = Frustum::sample_from_camera(
             &renderer.camera, 
-            1.0, 
-            70.0_f32.to_radians(), 
+            wh.x / wh.y, 
+            -70.0_f32.to_radians(), 
             0.1, 
-            100.0
+            1000.0
         );
 
         for handle in &self.mesh_handles {
@@ -49,8 +52,8 @@ impl Culler {
 
             let volume = Sphere {
                 center: mesh.position,
-                // radius: biggest_radius(&mesh),
-                radius: 1.0
+                radius: biggest_radius(&mesh),
+                // radius: 10.0
             };
 
             let model_matrix = 
@@ -70,12 +73,18 @@ impl Culler {
 
 struct Plane {
     normal: Vec3,
-    point: Vec3,
+    distance: f32,
 }
 
 impl Plane {
+    pub fn new(p1: Vec3, norm: Vec3) -> Self {
+        let normal = norm.normalize_or_zero();
+        let distance = normal.dot(p1);
+        Self { normal, distance }
+    }
+
     fn get_signed_distance_to_plane(&self, point: Vec3) -> f32 {
-        return Vec3::dot(self.normal, point) - self.point.length();
+        return self.normal.dot(point) - self.distance;
     }
 }
 
@@ -96,33 +105,14 @@ impl Frustum {
         let half_h_side = half_v_side * aspect;
         let front_mult_far = z_far * cam.front;
 
-        Self {
-            near_face: Plane {
-                point: cam.pos + z_near * cam.front,
-                normal: cam.front,
-            },
-            far_face: Plane {
-                point: cam.pos + front_mult_far,
-                normal: -cam.front,
-            },
-            right_face: Plane {
-                point: cam.pos,
-                normal: (front_mult_far - cam.right * half_h_side).cross(cam.up).normalize(),
-            },
-            left_face: Plane {
-                point: cam.pos,
-                normal: cam.up.cross(front_mult_far + cam.right * half_h_side).normalize(),
-            },
-            top_face: Plane {
-                point: cam.pos,
-                normal: cam.right.cross(front_mult_far - cam.up * half_v_side).normalize(),
-            },
-            bottom_face: Plane {
-                point: cam.pos,
-                normal: (front_mult_far + cam.up * half_v_side).cross(cam.right).normalize(),
-            },
+        Frustum {
+            near_face: Plane::new(cam.pos + z_near * cam.front, cam.front),
+            far_face: Plane::new(cam.pos + front_mult_far, -cam.front),
+            right_face: Plane::new(cam.pos, (front_mult_far - cam.right * half_h_side).cross(cam.up)),
+            left_face: Plane::new(cam.pos, cam.up.cross(front_mult_far + cam.right * half_h_side)),
+            top_face: Plane::new(cam.pos, cam.right.cross(front_mult_far - cam.up * half_v_side)),
+            bottom_face: Plane::new(cam.pos, (front_mult_far + cam.up * half_v_side).cross(cam.right)),
         }
-
     }
 
 }
@@ -138,25 +128,18 @@ struct Sphere {
 
 impl Sphere {
     pub fn is_on_or_forward_plane(&self, plane: &Plane) -> bool {
-        let distance = plane.normal.dot(self.center) - plane.point.length();
-        distance <= self.radius
+        return plane.get_signed_distance_to_plane(self.center) > -self.radius;
     }
 }
 
 impl Volume for Sphere {
     fn is_on_frustrum(&self, frustum: &Frustum, model: Mat4) -> bool {
-        let scale_x = model.col(0).truncate().length();
-        let scale_y = model.col(1).truncate().length();
-        let scale_z = model.col(2).truncate().length();
-        let global_scale = Vec3A::new(scale_x, scale_y, scale_z);
 
-        let global_center = (model * Vec4::new(self.center.x, self.center.y, self.center.z, 1.0)).truncate();
-
-        let max_scale = global_scale.max_element();
+        let global_center = vec3(model.w_axis.x, model.w_axis.y, model.w_axis.z);
 
         let global_sphere = Sphere {
             center: global_center,
-            radius: self.radius * (max_scale * 0.5),
+            radius: self.radius,
         };
 
         global_sphere.is_on_or_forward_plane(&frustum.left_face)
